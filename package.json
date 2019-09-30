@@ -1,0 +1,16 @@
+{
+  "name": "ceservnow",
+  "version": "1.0.0",
+  "description": "Webex Room Kit device integration for Kasa Light.",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Chris Norman",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "dependencies": {
+    "dotenv": "^8.1.0",
+    "jsxapi": "^4.4.0",
+    "ws": "^7.1.2"
+  }
+}
