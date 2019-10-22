@@ -1,6 +1,6 @@
-# Cisco Endpoint integraton for Kasa Lights
+# Cisco Endpoint integraton for ServiceNow
 
-Webex Room Kit device integration for Kasa Light.
+Webex Room Kit device integration for ServiceNow.
 
 ### Cisco Products Technologies/ Services
 The solution will levegerage the following technologies
@@ -30,9 +30,8 @@ Create a .env file with the following attributes
     TPADMIN=<telepresence Admin user>
     TPADMINPWD=<telepresence admin user password>
     IPADDRESS=<video endpoint IP address>
-    KASAEMAIL=<kasa cloud account email address>
-    KASAPASSWORD=<kasa light password>
-    KASALIGHT=<Kasa light device ID to be controlled>
+    SERVICENOW_USERNAMEPWD_BASE64=<username/password base64 combo>
+    SERVICE_NOW_INSTANCE_URL=<yourInstance>.service-now.com
     
 ## License
 

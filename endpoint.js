@@ -42,96 +42,69 @@ module.exports = class TPXapi extends EventEmitter{
 
     }
     //Intialize connection and perform intial endpoint checks for state.
-    init() {
+    async init() {
         try {
-            (async () => {
-                await this.connect();
-                await this.onReady();
-                //Following not required for this project but part of a larger room controller project coming
-                /*await this.checkCallStatus();
-                 await this.checkPeopleCount();
-                 await this.checkPeoplePresence();
-                 await this.checkDnD();*/
-                await this.getSysData();
-            })();
-        } catch (e) {
-            console.error(e);
+            await this.connect();
+            await this.onReady();
+
+        }catch(e){
+            console.log(e)
         }
     };
 
-    connect() {
-        return new Promise((resolve, reject) => {
-            try {
-                (async () => {
-                    const auth = Buffer.from(`${this.endpoint.username}:${this.endpoint.password}`).toString('base64');
-                    const options = {
-                        headers: {
-                            'Authorization': `Basic ${auth}`,
-                        }
-                    };
-
-                    const websocket = new WebSocket(this.url, options);
-                    websocket.on('error', console.error);
-                    this.xapi = new XAPI(new WSBackend(websocket));
-
-                    resolve();
-                })();
-            } catch (e) {
-                console.error(e);
-                reject(e);
+   async connect() {
+        const auth = Buffer.from(`${this.endpoint.username}:${this.endpoint.password}`).toString('base64');
+        const options = {
+            headers: {
+                'Authorization': `Basic ${auth}`,
             }
-        });
-    };
-    onReady() {
-        this.xapi.on('ready', () => {
-            console.log(`connexion successful for ${this.endpoint.ipAddress || this.endpoint.url}`);
-            this.connectedStatus = 'true';
-            /*this.monitorCallStatus();
-             this.monitorPeopleStatus();
-             this.monitorPeoplePresence();
-             this.monitorDnDStatus();*/
-            this.monitorWidget();
-            this.reportTouchUiForm();
-            return this;
-        });
-    };
-    closeConnect() {
-        return new Promise((resolve, reject) => {
-            try {
-                (async () => {
-                    this.connectedStatus = 'false';
-                    await this.xapi.close();
-                    console.log(`connexion closed for ${this.endpoint.ipAddress || this.endpoint.url}`);
-                    resolve();
-                })();
-            } catch (e) {
-                console.error(e);
-                reject(e);
-            }
-        });
+        };
+        const websocket = new WebSocket(this.url, options);
+        websocket.on('error', console.error);
+        return this.xapi = new XAPI(new WSBackend(websocket));
     };
 
-    checkCallStatus() {
-        return new Promise((resolve, reject) => {
-            this.xapi.status.get('Call')
-                .then((data) => {
-                    console.log(data);
-                    if (data.length === 0) {
-                        this.callStatus = 'false';
-                        resolve (this.emit('status', {state: 'disconnected'}));
-                    } else {
-                        this.callID = data[0].id;
-                        this.callStatus = 'true';
-                        console.log(this.callID);
-                        resolve(this.emit('status', {state: 'call'}));
-                    }
+    async onReady() {
+        try{
+            this.xapi.on('ready', () => {
+                console.log(`connexion successful for ${this.endpoint.ipAddress || this.endpoint.url}`);
+                this.connectedStatus = 'true';
+                this.checkCallStatus();
+                this.checkPeopleCount();
+                this.checkPeoplePresence();
+                this.checkDnD();
+                this.getSysData();
+                this.monitorCallStatus();
+                this.monitorPeopleStatus();
+                this.monitorPeoplePresence();
+                this.monitorDnDStatus();
+                this.monitorWidget();
+                this.reportTouchUiForm();
+                return this;
+            });
+        }catch(e){
+            console.error(e)
+        }
+    };
 
-                })
-                .catch(e => {
-                    console.error(e);
-                    reject();
-                })
-        })
+    async closeConnect() {
+        this.connectedStatus = 'false';
+        await this.xapi.close();
+        return console.log(`connexion closed for ${this.endpoint.ipAddress || this.endpoint.url}`);
+    };
+
+    async checkCallStatus() {
+        let data = await this.xapi.status.get('Call');
+        console.log(data);
+        if (data.length === 0) {
+            this.callStatus = 'false';
+            return this.emit('status', {state: 'disconnected'});
+        } else {
+            this.callID = data[0].id;
+            this.callStatus = 'true';
+            console.log(this.callID);
+            return this.emit('status', {state: 'call'});
+        }
     }
     //if in a call set callID for possible FECC
     monitorCallStatus() {
@@ -153,39 +126,23 @@ module.exports = class TPXapi extends EventEmitter{
             console.log(this.callStatus);
             return this.emit('status', {state: 'disconnected'});
         })
-
-
     }
-    checkPeopleCount(){
 
-        return new Promise((resolve, reject) => {
-            this.xapi.status.get('RoomAnalytics PeopleCount')
-                .then(data => {
-                    console.log(data)
-                    resolve(this.emit('status', {state: 'people', count: data.Current}));
-                }).catch(e => {
-                console.error(e);
-                reject()
-            })
-        })
+    async checkPeopleCount() {
+        let data = await this.xapi.status.get('RoomAnalytics PeopleCount');
+        return this.emit('status', {state: 'people', count: data.Current});
     }
+
     monitorPeopleStatus() {
         this.xapi.status.on('RoomAnalytics PeopleCount', (data) => {
-            console.log(data);
             return this.emit('status', {state: 'people', count: data.Current});
-        })
+        });
+
     }
-    checkPeoplePresence(){
-        return new Promise((resolve, reject) => {
-            this.xapi.status.get('RoomAnalytics PeoplePresence')
-                .then(data => {
-                    console.log(data)
-                    resolve(this.emit('status', {state: 'peoplePresence', presence: data}));
-                }).catch(e => {
-                console.error(e);
-                reject()
-            })
-        })
+    async checkPeoplePresence(){
+        let data = await this.xapi.status.get('RoomAnalytics PeoplePresence');
+        console.log(data);
+        return this.emit('status', {state: 'peoplePresence', presence: data});
     }
 
     monitorPeoplePresence() {
@@ -194,17 +151,11 @@ module.exports = class TPXapi extends EventEmitter{
             return this.emit('status', {state: 'peoplePresence', presence: data});
         })
     }
-    checkDnD(){
-        return new Promise((resolve, reject) => {
-            this.xapi.status.get('Conference DoNotDisturb')
-                .then(data => {
-                    console.log(data);
-                    resolve(this.emit('status', {state: 'dnd', status: data}));
-                }).catch(e => {
-                console.error(e);
-                reject();
-            })
-        })
+    async checkDnD(){
+        let data = await this.xapi.status.get('Conference DoNotDisturb');
+        console.log(data);
+        return this.emit('status', {state: 'dnd', status: data});
+
     }
     monitorDnDStatus() {
         this.xapi.status.on('Conference DoNotDisturb', (data) => {
@@ -229,97 +180,79 @@ module.exports = class TPXapi extends EventEmitter{
         })
 
     }
-    async getServiceNowIncidentIdFromURL(url){
+
+    async getServiceNowIncidentIdFromURL(url) {
+        return await this.xapi.command('HttpClient Get', {
+            'Header': [this.CONTENT_TYPE, this.SERVICENOW_AUTHTOKEN],
+            'Url': url,
+            'AllowInsecureHTTPS': 'True'
+        });
+    }
+
+    async raiseTicket(message) {
         try{
-            return await this.xapi.command('HttpClient Get', { 'Header': [this.CONTENT_TYPE, this.SERVICENOW_AUTHTOKEN] , 'Url':url, 'AllowInsecureHTTPS': 'True'});
+            console.log('Message sendMonitoringUpdatePost: ' + message);
+            let history = await this.callHistory();
+            var messagecontent = {
+                description: "Version :" + this.systemInfo.softwareVersion + "\n Last Call: " + JSON.stringify(history, null, 4),
+                short_description: this.systemInfo.systemName + ': ' + message,
+            };
+
+            const result = await this.xapi.command('HttpClient Post', {
+                'Header': [this.CONTENT_TYPE, this.SERVICENOW_AUTHTOKEN],
+                'Url': this.MONITORING_URL,
+                'AllowInsecureHTTPS': 'True'
+            }, JSON.stringify(messagecontent));
+
+            const serviceNowIncidentLocation = result.Headers.find(x => x.Key === 'Location');
+
+            var serviceNowIncidentURL = serviceNowIncidentLocation.Value;
+            var serviceNowIncidentTicket;
+
+            const incidentREsult = await this.getServiceNowIncidentIdFromURL(serviceNowIncidentURL);
+            var body = incidentREsult.Body;
+            console.log('Got this from getServiceNowIncidentIdFromURL: ' + JSON.stringify(incidentREsult, null, 4));
+            serviceNowIncidentTicket = JSON.parse(body).result.number;
+            const finalPanel = await this.xapi.command("UserInterface Message Alert Display", {
+                Title: 'ServiceNow receipt'
+                , Text: 'Your ticket id is ' + serviceNowIncidentTicket + '. Thanks for you feedback! Have an awesome day!'
+                , Duration: 10
+            });
+            return console.log(finalPanel);
+        }catch(e){
+            console.error(e);
+            this.xapi.command("UserInterface Message Alert Display", {
+                Title: 'ServiceNow failure'
+                , Text: 'Please call the help desk to report your issue'
+                , Duration: 10
+            });
+        }
+
+    }
+
+    async getSysData() {
+        try{
+            this.systemInfo.softwareVersion = await this.xapi.status.get('SystemUnit Software Version');
+
+            this.systemInfo.systemName = await this.xapi.config.get('SystemUnit Name');
+
+            if (this.systemInfo.systemName === '') {
+                this.systemInfo.systemName = await this.xapi.status.get('SystemUnit Hardware Module SerialNumber')
+            }
+
+            this.systemInfo.softwareReleaseDate = await this.xapi.status.get('SystemUnit Software ReleaseDate');
+
+            const clientmode = await this.xapi.config.set('HttpClient Mode', 'On');
+            return console.log(clientmode);
         }catch(e){
             console.error(e);
         }
     }
-    raiseTicket(message) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                console.log('Message sendMonitoringUpdatePost: ' + message);
-                let history =await this.callHistory();
-                var messagecontent = {
-                    description: "Version :"+this.systemInfo.softwareVersion + "\n Last Call: "+ JSON.stringify(history,null,4),
-                    short_description: this.systemInfo.systemName + ': ' + message,
-                };
 
-                const result = await this.xapi.command('HttpClient Post', {
-                    'Header': [this.CONTENT_TYPE, this.SERVICENOW_AUTHTOKEN],
-                    'Url': this.MONITORING_URL,
-                    'AllowInsecureHTTPS': 'True'
-                }, JSON.stringify(messagecontent));
-                const serviceNowIncidentLocation = result.Headers.find(x => x.Key === 'Location');
-                if(!serviceNowIncidentLocation.Value ){
-                    await this.xapi.command("UserInterface Message Alert Display", {
-                        Title: 'ServiceNow failed'
-                        , Text: 'Please call to raise a ticket'
-                        , Duration: 10
-                    });
-                }
-                var serviceNowIncidentURL = serviceNowIncidentLocation.Value;
-                var  serviceNowIncidentTicket;
-
-                const incidentREsult = await this.getServiceNowIncidentIdFromURL(serviceNowIncidentURL);
-                var body = incidentREsult.Body;
-                console.log('Got this from getServiceNowIncidentIdFromURL: ' + JSON.stringify(incidentREsult));
-                serviceNowIncidentTicket =  JSON.parse(body).result.number;
-                const finalPanel = await this.xapi.command("UserInterface Message Alert Display", {
-                    Title: 'ServiceNow receipt'
-                    , Text: 'Your ticket id is ' + serviceNowIncidentTicket + '. Thanks for you feedback! Have an awesome day!'
-                    , Duration: 10
-                });
-                console.log(finalPanel);
-
-                resolve();
-
-            } catch (e) {
-                console.error(e);
-                reject(e);
-            }
-        })
-    }
-    getSysData(){
-        return new Promise(async (resolve, reject) => {
-            try{
-                this.systemInfo.softwareVersion = await this.xapi.status.get('SystemUnit Software Version');
-
-                this.systemInfo.systemName = await this.xapi.config.get('SystemUnit Name');
-
-                if(this.systemInfo.systemName === ''){
-                    this.systemInfo.systemName =  await this.xapi.status.get('SystemUnit Hardware Module SerialNumber')
-                }
-
-                this.systemInfo.softwareReleaseDate = await this.xapi.status.get('SystemUnit Software ReleaseDate');
-
-                const clientmode = await this.xapi.config.set('HttpClient Mode', 'On');
-                console.log(clientmode);
-
-                resolve();
-
-            }catch(e){
-                console.error(e);
-                reject(e);
-
-            }
-
-        })
-
-    }
-    callHistory() {
-        return new Promise(async (resolve, reject) => {
-            try{
-                const history = await this.xapi.command("CallHistory Recents",{Limit: 1,DetailLevel: "Full"});
-                console.log(history);
-                resolve(history);
-
-            }catch(e){
-                reject(console.error(e))
-            }
-        })
-
+    async callHistory() {
+        const history = await this.xapi.command("CallHistory Recents", {Limit: 1, DetailLevel: "Full"});
+        console.log(history);
+        return history;
     }
     reportTouchUiForm() {
         this.xapi.event.on('UserInterface Extensions Panel Clicked', (event) => {
@@ -413,10 +346,7 @@ module.exports = class TPXapi extends EventEmitter{
                     break;
             }
         });
-
     }
-
-
 };
 
 
