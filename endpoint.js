@@ -130,11 +130,13 @@ module.exports = class TPXapi extends EventEmitter{
 
     async checkPeopleCount() {
         let data = await this.xapi.status.get('RoomAnalytics PeopleCount');
+        console.log(data);
         return this.emit('status', {state: 'people', count: data.Current});
     }
 
     monitorPeopleStatus() {
         this.xapi.status.on('RoomAnalytics PeopleCount', (data) => {
+            console.log(data);
             return this.emit('status', {state: 'people', count: data.Current});
         });
 
